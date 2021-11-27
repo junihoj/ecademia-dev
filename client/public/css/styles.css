@@ -1,0 +1,21 @@
+.jumbotron{
+    margin-top: 15px;
+    padding:60px;
+    background-image: linear-gradient(to right, #007bff, #000);
+    color: white;
+}
+
+.fixme{
+    position: fixed;
+    top:0;
+    left: 0;
+    right:0;
+}
+
+.login{
+    margin-top: -30px;
+}
+
+.nav{
+    margin-top: 60px;
+}

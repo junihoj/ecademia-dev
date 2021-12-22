@@ -29,13 +29,26 @@ const userSchema = new Schema({
         default:["Subscriber"],
         enum:["Subscriber","Instructor", "Admin"],
     },
+    // Stripe information
     stripe_account_id:"",
     stripe_seller:{},
     stripeSession:{},
+
+    // flutterwave information
+    flw_account_id: "",
+    flw_seller:{},
+    flw_session:{},
+    
     passwordResetCode:{
         data:String,
         default:"",
-    }
+    },
+    courses:[
+        {
+            type:Schema.Types.ObjectId,
+            ref:"Course",
+        }
+    ]
 },
 {timestamps:true}
 );

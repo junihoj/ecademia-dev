@@ -92,35 +92,35 @@ const TopNav = ()=>{
                         <a> Create Course</a>
                    </Link>
                 </Item> 
-            ):(
+            ):user && (
                 <Item 
                     icon={<TeamOutlined/>} 
                     key="/user/become-instructor"
                     onClick={(e)=>setCurrent(e.key)}
                     className="float-end"
                 >
-               <Link href="/user/become-instructor">
-                    <a> Become Instructor</a>
-               </Link>
-            </Item> 
+                    <Link href="/user/become-instructor">
+                            <a> Become Instructor</a>
+                    </Link>
+                </Item> 
             )}
 
            {user !== null && (
-                <SubMenu icon= {<CoffeeOutlined/>} title={user && user.name}>
-                    <ItemGroup mode="vertical">
+                <SubMenu icon= {<CoffeeOutlined/>} title={user && user.name} >
+                    <ItemGroup>
                         <Item 
-                        icon={<LogoutOutlined />} 
-                        key="/logout"
-                        onClick={logout}
-                        className="float-end"
+                            icon={<LogoutOutlined />} 
+                            key="/logout"
+                            onClick={logout}
+                            className="float-end"
                         >
                             Logout
                         </Item>
 
                         <Item 
-                        icon={<AccountBookFilled/>} 
-                        key="/user"
-                        className="float-end"
+                            icon={<AccountBookFilled/>} 
+                            key="/user"
+                            className="float-end"
                         >
                             <Link href="/user">
                                 <a>Dashboard</a>

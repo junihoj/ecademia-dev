@@ -2,7 +2,7 @@ import express from 'express';
 import {readdirSync} from 'fs';
 import cors from 'cors';
 import mongoose from 'mongoose';
-import { Db } from 'mongodb';
+// import { Db } from 'mongodb';
 const morgan = require('morgan');
 require("dotenv").config();
 var cookieParser =require('cookie-parser');

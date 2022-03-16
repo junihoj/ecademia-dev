@@ -1,4 +1,5 @@
 import expressJwt from 'express-jwt'
+import { Course } from '../models/course';
 import User from '../models/user'
 
 export const requireSignin = expressJwt({
@@ -17,5 +18,28 @@ export const isInstructor = async(req,res,next)=>{
         }
     }catch(err){
         console.log(err)
+    }
+}
+
+export const isEnrolled = async (req, res, next)=>{
+    try {
+        const user = await User.findById(req.user._id).exec()
+
+        const {slug}  = req.params
+        const course = await Course.findOne({slug}).exec()
+       
+        let ids = []
+
+        for(let i=0; i<user.courses.length;  i++){
+            ids.push(user.courses[i].toString())
+        }
+
+        if(!ids.includes(course._id.toString())){
+            res.sendStatus(403)
+        }else{
+            next()
+        }
+    } catch (error) {
+        console.log(error)
     }
 }

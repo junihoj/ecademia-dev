@@ -12,6 +12,7 @@ const SingleCourseJumbotron = ({
     user,
     handleFreeEnrollment,
     handlePaidEnrollment,
+    handleFluttterPayment,
     enrolled,
     setEnrolled
 })=>{

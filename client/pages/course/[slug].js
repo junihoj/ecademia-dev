@@ -6,7 +6,9 @@ import PreviewModal from "../../components/modal/PreviewModal";
 import SingleCourseLessons from "../../components/cards/SingleCourseLessons";
 import {Context} from '../../context'
 import {toast} from 'react-toastify'
-import {loadStripe} from '@stripe/stripe-js'
+import { FlutterWaveButton, closePaymentModal, useFlutterwave } from 'flutterwave-react-v3';
+
+// import {loadStripe} from '@stripe/stripe-js'
 
 
 const SingleCourse = ({course})=>{
@@ -18,7 +20,33 @@ const SingleCourse = ({course})=>{
     const router = useRouter()
     const {slug} = router.query
     const {lessons } = course
-    
+
+
+
+    //react flutterwave setup
+
+    const config = {
+        public_key:'FLWPUBK_TEST-fb1ef20c3c96cf19fc71eec1c4f34ac0-X',
+        tx_ref: Date.now(),
+        amount: course.price,
+        currency: "NGN",
+        redirect_url: `http://localhost:3000/flw/${course._id}`,
+        meta: {
+            // consumer_id: user._id,
+            consumer_mac: "92a3-912ba-1192a"
+            // userId:req.user._id,
+            // courseId:course._id,
+        },
+        customer: {
+            email: "user@gmail.com",
+            phonenumber: "080****4528",
+            name: "Yemi Desola"
+        },
+        customizations: {
+            title: "Pied Piper Payments",
+            logo: "https://images-platform.99static.com//_QXV_u2KU7-ihGjWZVHQb5d-yVM=/238x1326:821x1909/fit-in/500x500/99designs-contests-attachments/119/119362/attachment_119362573"
+        }
+    }
     //context
     const {state: {user}} = useContext(Context)
 
@@ -32,27 +60,54 @@ const SingleCourse = ({course})=>{
         setEnrolled(data)
     }
 
-    const handlePaidEnrollment= async ()=>{
-        // console.log('handle paid erollment')
+    // const handlePaidEnrollment= async ()=>{
+    //     // console.log('handle paid erollment')
 
-        //TODO: npm i @stripe/stripe-js
-        try{
-            if(!user) router.push('/login')
+    //     //TODO: npm i @stripe/stripe-js
+    //     try{
+    //         if(!user) router.push('/login')
 
-            // check for user enrollment
-            if(enrolled.status) return router.push(`/user/course/${enrolled.course.slug}`)
-            setLoading(true)
-            const {data} = await axios.post(`/api/paid-enrollment/${course._id}`)
-            const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY)
-            stripe.redirectToCheckout({sessionId: data})
-        }catch(err){
-            toast('Enrollment failed, try again.')
-            console.log(err)
-            setLoading(false)
-        }
+    //         // check for user enrollment
+    //         if(enrolled.status) return router.push(`/user/course/${enrolled.course.slug}`)
+    //         setLoading(true)
+    //         const {data} = await axios.post(`/api/paid-enrollment/${course._id}`)
+    //         const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY)
+    //         stripe.redirectToCheckout({sessionId: data})
+    //     }catch(err){
+    //         toast('Enrollment failed, try again.')
+    //         console.log(err)
+    //         setLoading(false)
+    //     }
+
+    // }
+
+    const handlePaidEnrollment = async ()=>{
+        /* 
+            1. send to server and check if it is a free or paid course
+            2. if a free course then return else flutterwave standard payment
+        */
+        console.log("paid enrollement");
+        const {data} = await axios.get(`/api/check-paid/${course._id}`);
+        console.log("PAID",data)
+        window.location.href=data;
+        
+      /*   if(data){
+            //TODO: LATER CHANGE PAYMENT TO SERVER SIDE
+           
+        } */
 
     }
 
+    const handleFluttterPayment = useFlutterwave(config);
+    const handleFlutterwave = ()=>{
+        handleFluttterPayment({
+            callback:(response) => {
+                console.log(response);
+                 closePaymentModal() // this will close the modal programmatically
+             },
+             onClose: () => {},
+        });
+    }
     const handleFreeEnrollment = async (e)=>{
         e.preventDefault()
         try{
@@ -86,6 +141,7 @@ const SingleCourse = ({course})=>{
                 loading={loading}
                 handleFreeEnrollment={handleFreeEnrollment}
                 handlePaidEnrollment={handlePaidEnrollment}
+                handleFluttterPayment={handleFluttterPayment}
                 enrolled={enrolled}
                 setEnrolled={setEnrolled}
             />

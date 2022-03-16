@@ -46,7 +46,7 @@ const Provider = ({children})=>{
         return response;
     }, (error)=>{
         const res = error.response;
-
+        console.log('RESPONSE', res);
         if(res.status === 401 && res.config && !res.config.__isRetryRequest){
             return new Promise((resolve, reject)=>{
                 axios.get('/api/logout').then((data)=>{

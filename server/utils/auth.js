@@ -14,7 +14,7 @@ export const hashPassword = (password)=>{
                 resolve(hash);
             });
         });
-    });
+    }); 
 }
 
 export const comparePassword = (password, hashed)=>{

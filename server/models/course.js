@@ -60,7 +60,7 @@ const courseSchema = new Schema(
         paid:{
             type:Boolean,
             default:true,
-        },
+        },  
         instructor:{
             type:ObjectId,
             ref:"User",

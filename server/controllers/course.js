@@ -4,9 +4,18 @@ import {Course} from '../models/course'
 import Slugify from 'slugify'
 import {readFileSync} from 'fs'
 import User from '../models/user'
+import Completed from '../models/completed'
+import axios from 'axios'
 
+//flutterwave config
+const flutterwave = require('flutterwave-node-v3')
+
+const flw = new flutterwave(process.env.FLW_PB_KEY, process.env.FLW_SECRET_KEY)
+
+//stripe config
 const stripe= require('stripe')(process.env.STRIPE_SECRET)
 
+//aws config
 const awsConfig  = {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
@@ -432,4 +441,196 @@ export const stripeSuccess = async (req,res)=>{
         console.log('STRIPE SUCCESS ERR', err)
         res.json({success: false})
     }
+}
+
+
+export const userCourses = async (req, res)=>{
+    const user = await User.findById(req.user._id).exec();
+    const courses = await Course.find({_id:{$in: user.courses}})
+        .populate('instructor', '_id name')
+        .exec()
+    res.json(courses)
+
+    
+}
+
+
+export const markCompleted = async (req, res)=>{
+    const {courseId, lessonId} = req.body;
+
+    //find if user with that course is already created
+
+    const existing = await Completed.findOne({
+        user:req.user._id,
+        course:courseId,
+    }).exec();
+
+    if(existing){
+        //update
+
+        const updated = await Completed.findOneAndUpdate({
+            user:req.user._id, course:courseId
+        },{
+            $addToSet:{lessons: lessonId}
+        }).exec();
+
+        res.json({ok:true})
+    }else{
+        //create a brand new completed document
+
+        const created = await new Completed({
+            user:req.user._id,
+            course:courseId,
+            lessons:lessonId,
+        }).save();
+
+        res.json({ok:true})
+    }
+}  
+
+
+export const listCompleted = async (req,res)=>{
+    try{
+        const list = await Completed.findOne({
+            user:req.user._id, 
+            course:req.body.courseId
+        }).exec()
+
+        list && res.json(list.lessons)
+    }catch(err){
+        console.log(err)
+    }
+}
+
+export const markIncompleted = async (req,res)=>{
+    try{
+        const {courseId, lessonId } = req.body;
+
+        const updated = await Completed.findOneAndUpdate({
+            user:req.user._id,
+            course:courseId
+            },
+            {
+                $pull:{lessons:lessonId}
+            }
+        ).exec();
+        res.json({ok:true})
+    }catch(err){
+       console.log(err)  
+    }
+}
+
+
+
+export const checkPaid = async(req,res)=>{
+    try {
+        const {courseId} = req.params;
+        // req.params.courseId
+        const course = await Course.findById(courseId)
+        .populate('instructor')
+        .exec();
+        console.log("course payment",course.paid);
+        console.log("course ID", req.params.courseId)
+        if(!course.paid) return;
+        const flwConfig = {
+            headers: {
+                'Authorization': `Bearer ${process.env.FLW_SECRET_KEY}`
+            },
+        }
+
+        console.log('SECRET', process.env.FLW_SECRET_KEY)
+        // `${user._id}/${slug}`
+        const {data} =  await axios.post(
+            "https://api.flutterwave.com/v3/payments",
+
+            {
+                tx_ref: nanoid(),
+                amount: course.price,
+                currency: "NGN",
+                //TODO:CHANGE REDIRECT URL FOR FLUTTER
+                // "http://localhost:8000/api/flw_courseenroll"
+                redirect_url: `http://localhost:3000/flw/${course._id}`,
+                meta: {
+                    // consumer_id: user._id,
+                    consumer_mac: "92a3-912ba-1192a"
+                    // userId:req.user._id,
+                    // courseId:course._id,
+                },
+                subaccounts: [
+                    {
+                      id: course.instructor.flw_seller.subaccount_id,
+                      // If you want to get 20% of the transaction as commission
+                      // You get: (0.2 * 6000) = 1200
+                      // Subaccount gets: 6000 - 1200 - 60 = 4740
+                      transaction_charge_type: "percentage",
+                      transaction_charge: 0.3,
+                    },
+                  ],
+                customer: {
+                    courseId,
+                    email: "user@gmail.com",
+                    phonenumber: "080****4528",
+                    name: "Yemi Desola"
+                },
+                customizations: {
+                    title: "Pied Piper Payments",
+                    logo: "https://images-platform.99static.com//_QXV_u2KU7-ihGjWZVHQb5d-yVM=/238x1326:821x1909/fit-in/500x500/99designs-contests-attachments/119/119362/attachment_119362573"
+                }
+            },
+            flwConfig
+        );
+        
+        console.log("API RESPONSE", data );
+        res.send(data.data.link)
+    } catch (error) {
+        console.log("FLUTTER STANDARD ERROR", error)
+    }
+}
+
+export const flwPaidEnrollment = async(req,res)=>{
+    console.log("URL PARAMS", req.params);
+    console.log("URL QUERY", req.query);
+    // TODO: PUT THIS IN A TRY AND CATCH STATEMENT
+    // TODO: Call webhook to check transaction success
+    //TODO: check if the userId in the payment data matches userId of loggedIn user
+    const {courseId} = req.params;
+    const userId = req.user._id;
+    if (req.query.status === 'successful'){
+        const response = await flw.Transaction.verify({id: req.query.transaction_id});
+        console.log("RESPONSE TO VERIFICATION", response);
+        // const {courseId, userId} = response.meta;
+
+        const course = await Course.findById(courseId).exec();
+
+        const user = await User.findById(userId).exec();
+
+        await User.findByIdAndUpdate(user._id, {
+            $addToSet: {courses: course._id},
+        }).exec()
+
+        res.json({success:true, course});
+    }
+}
+
+export const handleFlwpaidEnrollment = async (req,res)=>{
+    console.log("ENDPOST FOR SUCESS WAS HIT")
+    console.log("URL PARAMS", req.params);
+    console.log("URL QUERY", req.query);
+    // TODO: PUT THIS IN A TRY AND CATCH STATEMENT
+    // TODO: Call webhook to check transaction success with req.query.transaction_id
+    if (req.query.status === 'successful'){
+        const response = await flw.Transaction.verify({id: req.query.transaction_id});
+        console.log("RESPONSE TO VERIFICATION", response);
+        // const {courseId, userId} = response.meta;
+
+        /* const course = await Course.findById(courseId).exec();
+
+        const user = await User.findById(userId).exec();
+
+        await User.findByIdAndUpdate(user._id, {
+            $addToSet: {courses: course._id},
+        }).exec()
+
+        res.send({success:true, course}); */
+    } 
 }

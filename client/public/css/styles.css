@@ -19,3 +19,7 @@
 .nav{
     margin-top: 60px;
 }
+
+.pointer{
+    cursor: pointer;
+}
